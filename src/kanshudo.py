@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-from dto.kashudo import KashudoWord
+from dto import KanshudoWord
 
 
 class WordFinder:
@@ -24,7 +24,7 @@ class ExpandedRequests:
         return BeautifulSoup(html, self.soup_mode)
 
 
-class KashudoCrawler:
+class KanshudoCrawler:
     def __init__(self) -> None:
         self.main_page_url = 'https://www.kanshudo.com/collections/vocab_usefulness2021'
         self.words_page_template_url = self.main_page_url + '/UFN2021-'
@@ -39,7 +39,7 @@ class KashudoCrawler:
         level_counts = [int(self.word_finder.get_string_between_substrings(title, '(', 'words)')) for title in titles]
         return dict((i + 1, value) for i, value in enumerate(level_counts))
 
-    def get_words_on_all_pages(self) -> [KashudoWord]:
+    def get_words_on_all_pages(self) -> [KanshudoWord]:
         level_words_counts = self.get_level_word_counts()
 
         words = []
@@ -52,7 +52,7 @@ class KashudoCrawler:
                 print(level, current_page)
         return words
 
-    def get_words_on_one_page(self, level: int, page: int) -> [KashudoWord]:
+    def get_words_on_one_page(self, level: int, page: int) -> [KanshudoWord]:
         url_postfix = f'{level}-{self.words_page_template_offset * page + 1}'
         words_page_url = self.words_page_template_url + url_postfix
         soup = self.erequests.get_soup_content(words_page_url)
@@ -73,10 +73,6 @@ class KashudoCrawler:
             jlpt_element = jukugorow.select_one('.jlpt_container > span')
             jlpt_level = jlpt_element.get('class')[0][-1] if jlpt_element is not None else None
 
-            model = KashudoWord(kanji=kanji, kana=kana, occurence_level=level, jlpt_level=jlpt_level)
+            model = KanshudoWord(kanji=kanji, kana=kana, occurence_level=level, jlpt_level=jlpt_level)
             words.append(model)
         return words
-
-
-kc = KashudoCrawler()
-res = kc.get_words_on_all_pages()

@@ -1,4 +1,4 @@
-class KashudoWord:
+class KanshudoWord:
     def __init__(self, kanji: str | None, kana: str | None, occurence_level: int, jlpt_level: int) -> None:
         self.kanji = kanji
         self.kana = kana
