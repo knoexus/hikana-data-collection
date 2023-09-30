@@ -1,6 +1,7 @@
-import requests
 from bs4 import BeautifulSoup
 from dto import KanshudoWord
+from util.requests import ExpandedRequests
+from typing import List
 
 
 class WordFinder:
@@ -11,16 +12,13 @@ class WordFinder:
             return None
 
 
-class ExpandedRequests:
+class Soup:
     def __init__(self) -> None:
-        self.headers = { 'User-Agent': 'Mozilla/5.0' }
+        self.erequests = ExpandedRequests()
         self.soup_mode = 'html.parser'
-
-    def get(self, *args, **kwargs) -> requests.Response:
-        return requests.get(*args, **kwargs, headers=self.headers)
     
     def get_soup_content(self, *args, **kwargs) -> BeautifulSoup:
-        html = self.get(*args, **kwargs).content
+        html = self.erequests.get(*args, **kwargs)
         return BeautifulSoup(html, self.soup_mode)
 
 
@@ -29,33 +27,32 @@ class KanshudoCrawler:
         self.main_page_url = 'https://www.kanshudo.com/collections/vocab_usefulness2021'
         self.words_page_template_url = self.main_page_url + '/UFN2021-'
         self.words_page_template_offset = 100
-        self.erequests = ExpandedRequests()
+        self.soup = Soup()
         self.word_finder = WordFinder()
 
     def get_level_word_counts(self) -> dict:
-        soup = self.erequests.get_soup_content(self.main_page_url)
+        soup = self.soup.get_soup_content(self.main_page_url)
         title_elements = soup.select('.infopanel .title_h4')
         titles = [title_element.get_text() for title_element in title_elements]
         level_counts = [int(self.word_finder.get_string_between_substrings(title, '(', 'words)')) for title in titles]
         return dict((i + 1, value) for i, value in enumerate(level_counts))
 
-    def get_words_on_all_pages(self) -> [KanshudoWord]:
+    def get_words_on_all_pages(self) -> List[KanshudoWord]:
         level_words_counts = self.get_level_word_counts()
 
         words = []
-        for level, words_available in level_words_counts.items():
+        for level, words_available in [level_words_counts.items()]:
             current_page = 0
             while current_page * self.words_page_template_offset < words_available:
                 words_on_one_page = self.get_words_on_one_page(level, current_page)
                 words.extend(words_on_one_page)
                 current_page += 1
-                print(level, current_page)
         return words
 
-    def get_words_on_one_page(self, level: int, page: int) -> [KanshudoWord]:
+    def get_words_on_one_page(self, level: int, page: int) -> List[KanshudoWord]:
         url_postfix = f'{level}-{self.words_page_template_offset * page + 1}'
         words_page_url = self.words_page_template_url + url_postfix
-        soup = self.erequests.get_soup_content(words_page_url)
+        soup = self.soup.get_soup_content(words_page_url)
         
         words = []
         jukugorows = soup.select('.jukugorow')

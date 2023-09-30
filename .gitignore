@@ -148,3 +148,5 @@ staticfiles
 .env.docker.dev
 .env.docker.staging
 .env.docker.prod
+
+content
