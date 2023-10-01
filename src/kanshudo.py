@@ -41,7 +41,7 @@ class KanshudoCrawler:
         level_words_counts = self.get_level_word_counts()
 
         words = []
-        for level, words_available in [level_words_counts.items()]:
+        for level, words_available in level_words_counts.items():
             current_page = 0
             while current_page * self.words_page_template_offset < words_available:
                 words_on_one_page = self.get_words_on_one_page(level, current_page)
