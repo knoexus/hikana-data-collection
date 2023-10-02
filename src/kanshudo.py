@@ -1,30 +1,45 @@
-from bs4 import BeautifulSoup
 from dto import KanshudoWord
 from util.requests import ExpandedRequests
 from util.words import WordFinder
+from util.soup import Soup
+from util.io import IO
 from typing import List
-
-
-class Soup:
-    def __init__(self) -> None:
-        self.erequests = ExpandedRequests()
-        self.soup_mode = 'html.parser'
-    
-    def get_soup_content(self, *args, **kwargs) -> BeautifulSoup:
-        html = self.erequests.get(*args, **kwargs)
-        return BeautifulSoup(html, self.soup_mode)
+from bs4 import BeautifulSoup
+import os
 
 
 class KanshudoCrawler:
     def __init__(self) -> None:
+        self.kanshudo_local_dir = '../content/kanshudo-pages'
         self.main_page_url = 'https://www.kanshudo.com/collections/vocab_usefulness2021'
         self.words_page_template_url = self.main_page_url + '/UFN2021-'
         self.words_page_template_offset = 100
-        self.soup = Soup()
         self.word_finder = WordFinder()
+        self.erequests = ExpandedRequests()
+
+    def __get_words_on_one_page_url(self, level: int, page: int) -> str:
+        url_postfix = f'{level}-{self.words_page_template_offset * page + 1}'
+        return self.words_page_template_url + url_postfix
+    
+    def __get_page_soup(self, path: str, url: str) -> BeautifulSoup | None:
+        if not os.path.isfile(path):
+            html = self.erequests.get(url)
+            IO.save_file(html, path)
+            return Soup().get_soup_content(html)
+
+        return Soup().load_soup_content(path)
+
+    def __get_main_page_soup(self) -> BeautifulSoup | None:
+        path = f'{self.kanshudo_local_dir}/main.html'
+        return self.__get_page_soup(path, self.main_page_url)
+    
+    def __get_words_on_one_page_soup(self, level: int, page: int) -> BeautifulSoup | None:
+        path = f'{self.kanshudo_local_dir}/{level}_{page}.html'
+        url = self.__get_words_on_one_page_url(level, page)
+        return self.__get_page_soup(path, url)
 
     def get_level_word_counts(self) -> dict:
-        soup = self.soup.get_soup_content(self.main_page_url)
+        soup = self.__get_main_page_soup()
         title_elements = soup.select('.infopanel .title_h4')
         titles = [title_element.get_text() for title_element in title_elements]
         level_counts = [int(self.word_finder.get_string_between_substrings(title, '(', 'words)')) for title in titles]
@@ -43,10 +58,8 @@ class KanshudoCrawler:
         return words
 
     def get_words_on_one_page(self, level: int, page: int) -> List[KanshudoWord]:
-        url_postfix = f'{level}-{self.words_page_template_offset * page + 1}'
-        words_page_url = self.words_page_template_url + url_postfix
-        soup = self.soup.get_soup_content(words_page_url)
-        
+        soup = self.__get_words_on_one_page_soup(level, page)
+
         words = []
         jukugorows = soup.select('.jukugorow')
         for jukugorow in jukugorows:

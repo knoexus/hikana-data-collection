@@ -4,14 +4,14 @@ import io
 import os
 from util.requests import ExpandedRequests
 from util.exceptions import JMDICT_ENTRY_NOT_FOUND_EXCEPTION
+from util.io import IO
 from dto import JMDictWord
 from typing import List
 
 
 class JMDictParser():
     def __init__(self) -> None:
-        self.jmdict_local_dir = '../content'
-        self.jmdict_local_path = f'{self.jmdict_local_dir}/JMdict_e'
+        self.jmdict_local_path = '../content/JMdict_e'
         self.jmdict_download_url = 'http://ftp.edrdg.org/pub/Nihongo/JMdict_e.gz'
         self.erequests = ExpandedRequests()
 
@@ -26,15 +26,14 @@ class JMDictParser():
                 return f_out.read()
             
     def __save_jmdict(self, jmdict: bytes) -> None:
-        os.mkdir(self.jmdict_local_dir)
-        with open(self.jmdict_local_path, "wb") as f:
-            f.write(jmdict)
+        IO.save_file(jmdict, self.jmdict_local_path)
         
     def __get_jmdict_root(self, should_download: bool) -> ET.Element | None:
         if should_download:
             jmdict_gzip = self.__download_jmdict_gzip()
             jmdict = self.__extract_jmdict_from_gzip(jmdict_gzip)
             self.__save_jmdict(jmdict)
+            return ET.fromstring(jmdict)
 
         return ET.parse(self.jmdict_local_path).getroot()
 
