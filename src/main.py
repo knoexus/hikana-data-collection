@@ -1,11 +1,14 @@
 from kanshudo import KanshudoCrawler
 from jmdict import JMDictParser
 from kana import KanaService
-
+from mongodb import MongoDBConnector
 from dto import JMDictWordKanji, JMDictWordKana, KanaType, CompleteWord
+from typing import List
+from dotenv import load_dotenv
+import os
 
 
-def main():
+def get_words() -> List[dict]:
     kshd = KanshudoCrawler()
     jmdict_parser = JMDictParser()
     kana_service = KanaService()
@@ -29,12 +32,24 @@ def main():
                     kana_type=kana_type, 
                     romaji=romaji,
                     translations_eng=translations_eng
-                )
+                ).__dict__
             )
         except:
             continue
     return complete_words
 
 
+def main():
+    db = MongoDBConnector(
+        db_name=os.environ['MONGODB_DB_NAME'], 
+        username=os.environ['MONGODB_USERNAME'], 
+        password=os.environ['MONGODB_PASS'], 
+        cluster_uri=os.environ['MONGODB_CLUSTER_URI']
+    ).db
+    words = get_words()
+    db.words.insert_many(words)
+
+
 if __name__ == '__main__':
-    words = main()
+    load_dotenv()
+    main()
