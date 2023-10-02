@@ -74,7 +74,7 @@ class KanshudoCrawler:
                 kana = furigana_element.get_text()
 
             jlpt_element = jukugorow.select_one('.jlpt_container > span')
-            jlpt_level = jlpt_element.get('class')[0][-1] if jlpt_element is not None else None
+            jlpt_level = int(jlpt_element.get('class')[0][-1]) if jlpt_element is not None else None
 
             model = KanshudoWord(kanji=kanji, kana=kana, occurence_level=level, jlpt_level=jlpt_level)
             words.append(model)
