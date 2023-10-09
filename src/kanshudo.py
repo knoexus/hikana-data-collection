@@ -3,8 +3,9 @@ from util.requests import ExpandedRequests
 from util.words import WordFinder
 from util.soup import Soup
 from util.io import IO
-from typing import List
+from typing import List, Tuple
 from bs4 import BeautifulSoup
+from bs4.element import Tag
 import os
 
 
@@ -56,26 +57,37 @@ class KanshudoCrawler:
                 words.extend(words_on_one_page)
                 current_page += 1
         return words
+    
+    def get_kana_and_kanji(self, parent_element: Tag) -> Tuple[str | None, str]:
+        jukugo_element = parent_element.select_one('.jukugo')
+        kanji_element = jukugo_element.select_one('.f_kanji')
+        furigana_element = jukugo_element.select_one('.furigana')
+        if kanji_element is None and furigana_element is None:
+            kanji = None
+            kana = jukugo_element.select_one('a').get_text()
+        else:
+            kanji = kanji_element.get_text()
+            kana = furigana_element.get_text()
+        return kanji, kana
+    
+    def get_jlpt_level(self, parent_element: Tag) -> int | None:
+        jlpt_element = parent_element.select_one('.jlpt_container > span')
+        return int(jlpt_element.get('class')[0][-1]) if jlpt_element is not None else None
+    
+    def get_pitch_chars(self, parent_element: Tag) -> List[str] | None:
+        pitch_char_elements = parent_element.select('text.pitch-char[fill="#77758e"]')
+        return None if len(pitch_char_elements) == 0 else [pitch_char_element.get_text() for pitch_char_element in pitch_char_elements]
 
     def get_words_on_one_page(self, level: int, page: int) -> List[KanshudoWord]:
         soup = self.__get_words_on_one_page_soup(level, page)
 
         words = []
-        jukugorows = soup.select('.jukugorow')
-        for jukugorow in jukugorows:
-            jukugo_element = jukugorow.select_one('.jukugo')
-            kanji_element = jukugo_element.select_one('.f_kanji')
-            furigana_element = jukugo_element.select_one('.furigana')
-            if kanji_element is None and furigana_element is None:
-                kanji = None
-                kana = jukugo_element.select_one('a').get_text()
-            else:
-                kanji = kanji_element.get_text()
-                kana = furigana_element.get_text()
+        jukugorow_elements = soup.select('.jukugorow')
+        for jukugorow_element in jukugorow_elements:
+            kanji, kana = self.get_kana_and_kanji(jukugorow_element)
+            jlpt_level = self.get_jlpt_level(jukugorow_element)
+            pitch_chars = self.get_pitch_chars(jukugorow_element)
 
-            jlpt_element = jukugorow.select_one('.jlpt_container > span')
-            jlpt_level = int(jlpt_element.get('class')[0][-1]) if jlpt_element is not None else None
-
-            model = KanshudoWord(kanji=kanji, kana=kana, occurence_level=level, jlpt_level=jlpt_level)
+            model = KanshudoWord(kanji=kanji, kana=kana, pitch_chars=pitch_chars, occurence_level=level, jlpt_level=jlpt_level)
             words.append(model)
         return words
